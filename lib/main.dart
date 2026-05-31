@@ -58,7 +58,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
     {
       'id': 'letreco', 
       'nome': 'Letreco', 
-      'url': 'https://www.gabrielbueno.com/letreco/',
+      'url': 'https://www.gabtoschi.com/letreco/',
       'fuso_utc': -3
     },
     {
@@ -237,7 +237,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
     },
     {
       'id': 'guess-the-footballer',
-      'nome': 'Guess the Footballer',
+      'nome': 'Futbol 11 Guess the Footballer',
       'url': 'https://futbol-11.com/guess-the-footballer',
       'fuso_utc': -3
     },
@@ -347,7 +347,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
       'id': 'pokedle',
       'nome': 'Pokedle',
       'url': 'https://pokedle.net/',
-      'fuso_utc': -3
+      'fuso_utc': -6
     },
     {
       'id': 'faces',
