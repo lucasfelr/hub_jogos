@@ -37,6 +37,18 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Regra para renomear o APK final (HubJogos-versao.apk)
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val outputImpl = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val versionName = variant.versionName ?: "1.0"
+            if (variant.buildType.name == "release") {
+                outputImpl.outputFileName = "HubJogos-$versionName.apk"
+            }
+        }
+    }
 }
 
 flutter {
