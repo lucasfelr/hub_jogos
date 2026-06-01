@@ -117,10 +117,47 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
     await _carregarStatus();
   }
 
+  void _exibirConfirmacaoExclusao(String id, String nome) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirmar Exclusão'),
+        content: Text('Tem certeza que deseja excluir "$nome"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _excluirJogo(id);
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Excluir'),
+          )
+        ],
+      ),
+    );
+  }
+
+  bool _validarUrl(String url) {
+    try {
+      Uri.parse(url);
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void _exibirDialogoEdicao({Map<String, dynamic>? jogo}) {
     final nomeController = TextEditingController(text: jogo?['nome'] ?? '');
     final urlController = TextEditingController(text: jogo?['url'] ?? '');
     final fusoController = TextEditingController(text: jogo?['fuso_utc']?.toString() ?? '-3');
+    String? erroUrl;
     int? diaReset = jogo?['dia_reset'];
 
     showDialog(
@@ -131,7 +168,13 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               TextField(controller: nomeController, decoration: const InputDecoration(labelText: 'Nome')),
-              TextField(controller: urlController, decoration: const InputDecoration(labelText: 'URL')),
+              TextField(
+                controller: urlController,
+                decoration: InputDecoration(
+                  labelText: 'URL',
+                  errorText: erroUrl,
+                ),
+              ),
               TextField(controller: fusoController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Fuso UTC')),
               const SizedBox(height: 10),
               DropdownButtonFormField<int?>(
@@ -155,6 +198,14 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
             ElevatedButton(
               onPressed: () {
+                if (nomeController.text.isEmpty) {
+                  setDialogState(() => erroUrl = 'Nome obrigatório');
+                  return;
+                }
+                if (!_validarUrl(urlController.text)) {
+                  setDialogState(() => erroUrl = 'URL inválida (use http:// ou https://)');
+                  return;
+                }
                 if (jogo == null) {
                   _adicionarJogo(nomeController.text, urlController.text, int.tryParse(fusoController.text) ?? -3, diaReset);
                 } else {
@@ -180,7 +231,12 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
         itemBuilder: (context, i) {
           final j = _jogos[i];
           final jaJogou = statusJogos[j['id']] ?? false;
-          final faviconUrl = 'https://www.google.com/s2/favicons?sz=64&domain=${Uri.parse(j['url']).origin}';
+          String faviconUrl = '';
+          try {
+            faviconUrl = 'https://www.google.com/s2/favicons?sz=64&domain=${Uri.parse(j['url']).origin}';
+          } catch (_) {
+            faviconUrl = '';
+          }
 
                     return ListTile(
             leading: SizedBox(
@@ -205,7 +261,7 @@ class _TelaCatalogoState extends State<TelaCatalogo> {
             ),
             trailing: Row(mainAxisSize: MainAxisSize.min, children: [
               IconButton(icon: const Icon(Icons.edit, size: 20), onPressed: () => _exibirDialogoEdicao(jogo: j)),
-              IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () => _excluirJogo(j['id'])),
+              IconButton(icon: const Icon(Icons.delete, size: 20, color: Colors.red), onPressed: () => _exibirConfirmacaoExclusao(j['id'], j['nome'])),
             ]),
             onTap: () async {
               await Navigator.push(context, MaterialPageRoute(builder: (_) => TelaJogo(jogo: j)));
@@ -228,12 +284,21 @@ class TelaJogo extends StatefulWidget {
 class _TelaJogoState extends State<TelaJogo> {
   bool _foiJogado = false;
   late final WebViewController _controller;
+  String? _erroUrl;
 
   @override
   void initState() {
     super.initState();
     _check();
-    _controller = WebViewController()..setJavaScriptMode(JavaScriptMode.unrestricted)..loadRequest(Uri.parse(widget.jogo['url']));
+    try {
+      Uri.parse(widget.jogo['url']);
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..loadRequest(Uri.parse(widget.jogo['url']));
+    } catch (e) {
+      _erroUrl = 'URL inválida: ${widget.jogo['url']}';
+      _controller = WebViewController()..setJavaScriptMode(JavaScriptMode.unrestricted);
+    }
   }
 
   Future<void> _check() async {
@@ -252,7 +317,18 @@ class _TelaJogoState extends State<TelaJogo> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: Text(widget.jogo['nome']), actions: [IconButton(icon: Icon(_foiJogado ? Icons.check_circle : Icons.circle_outlined), onPressed: _toggle)]),
-        body: WebViewWidget(controller: _controller),
+        body: _erroUrl != null
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, color: Colors.red, size: 64),
+                    const SizedBox(height: 16),
+                    Text(_erroUrl!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                  ],
+                ),
+              )
+            : WebViewWidget(controller: _controller),
       );
 }
 
